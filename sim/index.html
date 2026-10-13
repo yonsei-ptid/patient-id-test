@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+  <title>Fungus_real_Final</title>
+  <style>
+    /* 브라우저 창 전체를 쓰고, 게임은 16:9 비율을 유지한 채 가운데에 최대한 크게 */
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    #unity-container {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-canvas {
+      display: block;
+      background: #000;
+    }
+    /* 불러오는 화면 */
+    #loading {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #fff;
+      font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+      font-size: 18px;
+      background: #00295C;
+    }
+    #loading-bar {
+      width: 320px; max-width: 70vw; height: 8px;
+      margin-top: 18px;
+      background: rgba(255,255,255,.25);
+      border-radius: 4px; overflow: hidden;
+    }
+    #loading-fill {
+      width: 0; height: 100%;
+      background: #5C94D6;
+      transition: width .2s;
+    }
+    #loading-note {
+      margin-top: 14px;
+      font-size: 14px; color: #B9CEE7;
+    }
+    /* 휴대폰·태블릿을 세로로 들었을 때 가로로 돌려 달라는 안내 */
+    #rotate {
+      display: none;
+      position: absolute; inset: 0; z-index: 10;
+      flex-direction: column; align-items: center; justify-content: center;
+      background: #00295C; color: #fff; text-align: center;
+      font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+      padding: 24px;
+    }
+    #rotate .icon { font-size: 56px; margin-bottom: 18px; }
+    #rotate .big  { font-size: 20px; font-weight: 700; }
+    #rotate .small{ font-size: 14px; color: #B9CEE7; margin-top: 10px; }
+    @media (orientation: portrait) and (pointer: coarse) {
+      #rotate { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+  </div>
+
+  <div id="rotate">
+    <div class="icon">⟳</div>
+    <div class="big">화면을 가로로 돌려 주세요</div>
+    <div class="small">이 프로그램은 가로 화면에 맞춰져 있습니다</div>
+  </div>
+
+  <div id="loading">
+    <div>학습 프로그램을 불러오는 중입니다</div>
+    <div id="loading-bar"><div id="loading-fill"></div></div>
+    <div id="loading-note">처음에는 시간이 조금 걸릴 수 있습니다</div>
+  </div>
+
+  <script>
+    var canvas  = document.querySelector("#unity-canvas");
+    var loading = document.querySelector("#loading");
+    var fill    = document.querySelector("#loading-fill");
+
+    // 창 크기에 맞춰 16:9 로 최대한 크게
+    function fitCanvas() {
+      var w = window.innerWidth;
+      var h = window.innerHeight;
+      var ratio = 16 / 9;
+      if (w / h > ratio) { w = h * ratio; } else { h = w / ratio; }
+      canvas.style.width  = Math.floor(w) + "px";
+      canvas.style.height = Math.floor(h) + "px";
+    }
+    window.addEventListener("resize", fitCanvas);
+    fitCanvas();
+
+    // 노란 경고 띠는 학생에게 보이지 않게 (개발용 콘솔에만 기록)
+    function unityShowBanner(msg, type) {
+      if (type === "error") console.error(msg);
+      else console.warn(msg);
+    }
+
+    var buildUrl  = "Build";
+    var loaderUrl = buildUrl + "/b23dd96997961653e2825455633aac82.loader.js";
+    var config = {
+      dataUrl: buildUrl + "/6926edd1e869677011debae5c2978f32.data.unityweb",
+      frameworkUrl: buildUrl + "/c0b8091f938fbad4e5f6b62872f1cadf.framework.js.unityweb",
+      codeUrl: buildUrl + "/3ea3c34c1bfc06d76af86a8048440567.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "DefaultCompany",
+      productName: "Fungus_real_Final",
+      productVersion: "1.0",
+      showBanner: unityShowBanner,
+    };
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = function () {
+      createUnityInstance(canvas, config, function (progress) {
+        fill.style.width = (100 * progress) + "%";
+      }).then(function () {
+        loading.style.display = "none";
+        canvas.focus();
+      }).catch(function (message) {
+        alert("프로그램을 불러오지 못했습니다. 새로고침(F5) 해 주세요.\n\n" + message);
+      });
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>
