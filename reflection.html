@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>환자확인 완전학습 프로그램</title>
+
+<!--
+====================================================================
+  환자확인 완전학습 프로그램 — 성찰일지
+  ------------------------------------------------------------------
+  1. 아래 CONFIG 부분만 수정하면 바로 사용할 수 있습니다.
+  2. 이 파일 하나만 웹서버에 올리면 됩니다. (설치 불필요)
+  3. 시뮬레이션에서 ?sid=S01 형태로 넘어오면 코드가 자동으로 채워집니다.
+
+  문항 구조 근거:
+  INACSL Standards Committee, Decker, S., Alinier, G., Crawford, S. B.,
+  Gordon, R. M., & Wilson, C. (2021). Healthcare Simulation Standards of
+  Best Practice(TM) The Debriefing Process.
+  Clinical Simulation in Nursing, 58, 27-32.
+====================================================================
+-->
+
+<link rel="stylesheet" as="style" crossorigin
+ href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
+<style>
+:root{
+  --navy:#00295C;
+  --blue:#003876;
+  --blue-mid:#1B5AA0;
+  --blue-soft:#E7EEF7;
+  --blue-line:#C6D5E8;
+
+  --paper:#F5F8FB;
+  --surface:#FFFFFF;
+  --ink:#0E2340;
+  --ink-soft:#5A7292;
+  --line:#DCE5EF;
+
+  --ok:#186B4E;
+  --no:#9E3229;
+
+  --maxw:800px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,
+              'Malgun Gothic','맑은 고딕',sans-serif;
+  font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2{margin:0;line-height:1.3;font-weight:700;letter-spacing:-0.025em;}
+button{font-family:inherit;font-size:inherit;cursor:pointer;}
+:focus-visible{outline:3px solid var(--blue-mid);outline-offset:3px;}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+
+.btn{
+  background:var(--blue-mid);color:#fff;border:none;
+  padding:15px 34px;border-radius:6px;font-weight:600;font-size:16px;
+  transition:background .18s;
+}
+.btn:hover:not(:disabled){background:#2E74C0;}
+.btn:disabled{background:#B8C6D6;cursor:not-allowed;}
+
+/* ============ 시작 화면 ============ */
+#gate{min-height:100vh;background:var(--navy);color:#fff;
+      display:flex;align-items:center;position:relative;overflow:hidden;}
+#gate::before{
+  content:"";position:absolute;inset:0 0 auto;height:3px;
+  background:linear-gradient(90deg,#1B5AA0 0 16.6%,#2E74C0 0 33.3%,
+             #1B5AA0 0 50%,#2E74C0 0 66.6%,#1B5AA0 0 83.3%,#2E74C0 0);
+}
+#gate .wrap{width:100%;padding-top:64px;padding-bottom:64px;}
+
+#progName{
+  font-size:clamp(30px,5.6vw,50px);
+  font-weight:800;color:#fff;
+  letter-spacing:-0.035em;line-height:1.16;margin:0 0 18px;max-width:24ch;
+}
+.subhead{
+  font-size:clamp(18px,2.4vw,23px);font-weight:600;color:#7FA9D8;
+  margin:0 0 26px;letter-spacing:-0.015em;
+}
+#gate .desc{color:#B9CEE7;margin:0 0 12px;max-width:48ch;font-size:16.5px;}
+#gate .desc:last-of-type{margin-bottom:44px;}
+
+.field{display:block;margin-bottom:10px;font-size:14px;color:#8FB3DC;}
+#sidInput{
+  width:100%;max-width:320px;padding:16px 18px;
+  font-family:inherit;font-size:21px;font-weight:600;
+  font-variant-numeric:tabular-nums;letter-spacing:.08em;
+  border:none;border-radius:6px;background:#fff;color:var(--ink);
+}
+#sidInput::placeholder{color:#A9B9CC;font-weight:400;}
+#sidInput:disabled{background:#DCE7F3;color:var(--ink);}
+.hint{font-size:13.5px;color:#8FB3DC;margin:14px 0 0;max-width:48ch;}
+.err{color:#FFAFA6;font-size:14px;margin:12px 0 0;min-height:1.4em;}
+#startBtn{margin-top:26px;}
+
+/* ============ 상단 ============ */
+#topbar{position:sticky;top:0;z-index:50;background:var(--navy);color:#fff;}
+#topbar .inner{
+  max-width:var(--maxw);margin:0 auto;padding:13px 24px;
+  display:flex;align-items:center;gap:20px;
+}
+#barName{font-size:14px;font-weight:600;flex:1;}
+#sidTag{font-size:13px;color:#8FB3DC;font-variant-numeric:tabular-nums;}
+#saveTag{font-size:12.5px;color:#7FA9D8;min-width:6.5em;text-align:right;}
+
+/* ============ 작성 ============ */
+#form{display:none;padding:40px 0 120px;}
+
+.intro{
+  background:var(--blue-soft);border-radius:8px;
+  padding:22px 24px;margin-bottom:30px;
+  font-size:15.5px;color:#1D3F6B;line-height:1.75;
+}
+.intro strong{font-weight:600;}
+
+.item{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:24px 26px;margin-bottom:16px;
+}
+.item.filled{border-color:var(--blue-line);}
+.qhead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;}
+.qnum{font-size:15px;font-weight:700;color:var(--blue);
+      font-variant-numeric:tabular-nums;flex-shrink:0;}
+.qhead h2{font-size:17.5px;flex:1;line-height:1.55;}
+.qnote{font-size:14px;color:var(--ink-soft);margin:0 0 16px 30px;}
+
+textarea{
+  width:100%;min-height:150px;resize:vertical;
+  font-family:inherit;font-size:15.5px;line-height:1.75;
+  color:var(--ink);background:#FCFDFE;
+  border:1.5px solid var(--line);border-radius:6px;
+  padding:14px 16px;
+}
+textarea:focus{border-color:var(--blue-mid);outline:none;background:#fff;}
+textarea::placeholder{color:#A9B9CC;}
+
+.count{
+  display:flex;justify-content:flex-end;gap:8px;
+  font-size:13px;color:var(--ink-soft);margin-top:8px;
+  font-variant-numeric:tabular-nums;
+}
+.count.met{color:var(--ok);}
+
+#submitRow{margin-top:32px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+#submitNote{font-size:14px;color:var(--ink-soft);}
+
+/* ============ 완료 ============ */
+#done{min-height:100vh;background:var(--navy);color:#fff;
+      display:none;align-items:center;}
+#done.show{display:flex;}
+#done .wrap{width:100%;padding-top:64px;padding-bottom:64px;}
+#done h1{font-size:clamp(27px,4.6vw,38px);font-weight:800;margin-bottom:20px;}
+#done p{color:#B9CEE7;margin:0 0 12px;max-width:46ch;}
+#sendState{font-size:13.5px;color:#8FB3DC;margin-top:30px;
+           padding-top:26px;border-top:1px solid rgba(255,255,255,.18);}
+
+@media (max-width:600px){
+  .item{padding:20px 19px;}
+  .qnote{margin-left:0;}
+  #barName{display:none;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+</style>
+</head>
+<body>
+
+<div id="topbar" hidden>
+  <div class="inner">
+    <span id="barName"></span>
+    <span id="sidTag"></span>
+    <span id="saveTag"></span>
+  </div>
+</div>
+
+<!-- 시작 -->
+<section id="gate">
+  <div class="wrap">
+    <h1 id="progName"></h1>
+    <p class="subhead">성찰일지를 작성하세요</p>
+    <p class="desc">
+      성찰일지는 정답이 없습니다. 환자확인 완전학습 프로그램을 통해 본인이 직접 경험하고 느낀 것을 질문에 따라 자유롭게 작성합니다.
+    </p>
+
+    <label class="field" for="sidInput">연구 대상자 코드</label>
+    <input id="sidInput" type="text" autocomplete="off"
+           placeholder="S01" maxlength="4" spellcheck="false">
+    <p class="hint" id="codeHint"></p>
+    <p class="err" id="gateErr"></p>
+    <button class="btn" id="startBtn">성찰일지 작성 시작</button>
+  </div>
+</section>
+
+<!-- 작성 -->
+<section id="form"><div class="wrap" id="formInner"></div></section>
+
+<!-- 완료 -->
+<section id="done">
+  <div class="wrap">
+    <h1>모든 과정을 마쳤습니다</h1>
+    <p>성찰일지가 제출되었습니다. 참여해 주셔서 감사합니다.</p>
+    <p>이제 창을 닫으셔도 됩니다.</p>
+    <p id="sendState"></p>
+  </div>
+</section>
+
+<script>
+/* ==================================================================
+   CONFIG — 여기만 고치면 됩니다
+   ================================================================== */
+const CONFIG = {
+
+  // 프로그램 이름 (화면 상단, 브라우저 탭 제목에 함께 반영됩니다)
+  PROGRAM_NAME: "환자확인 완전학습 프로그램",
+
+  // 연구 대상자 코드 형식 (예: S01 ~ S50)
+  CODE_PREFIX: "S",
+  CODE_MIN: 1,
+  CODE_MAX: 50,
+
+  // 스프레드시트 전송 주소 (Apps Script 웹 앱 URL, /exec 로 끝납니다)
+  // 비워두면 전송하지 않고 화면에만 표시합니다.
+    ENDPOINT: "https://script.google.com/macros/s/AKfycbwsarji-U191NVlSpzaggVlMxlShNEe0Hd6F_SACKMfgLBUiI_SSAM2on-jVhrg9XD8Tg/exec",
+
+  // 각 문항의 최소 글자 수. 너무 짧은 답을 막습니다. 0 이면 제한 없음.
+  MIN_CHARS: 50,
+
+  // 작성 중 내용을 이 브라우저에 임시 저장합니다.
+  // 실수로 창을 닫아도 다시 열면 이어서 쓸 수 있습니다.
+  AUTOSAVE: true
+};
+
+/* ==================================================================
+   문항 — INACSL 디브리핑 표준(2021)의 네 단계 구조를 따릅니다.
+
+   description phase   → 화면 상단 안내문
+   reaction/defuse     → 1번
+   analysis/discovery  → 2, 3번
+   summary/application → 4번
+   ================================================================== */
+const ITEMS = [
+  { id:"R1",
+    phase:"reaction",
+    q:"시뮬레이션을 하면서 가장 어려웠던 순간은 언제였습니까?",
+    note:"그 상황에서 어떤 생각이 들었고 무엇을 망설였는지 함께 적어 주세요."
+  },
+  { id:"R2",
+    phase:"analysis",
+    q:"선택한 답 중 틀린 것이 있었다면, 무엇을 잘못 알고 있었다고 생각합니까?",
+    note:"틀린 이유를 스스로 설명해 보세요. 모두 맞혔다면 헷갈렸던 선택지를 적어도 됩니다."
+  },
+  { id:"R3",
+    phase:"analysis",
+    q:"마이크로 러닝과 재학습을 통해 새롭게 이해하게 된 것은 무엇입니까?",
+    note:"학습 전과 후에 환자확인 절차에 대해 생각이 달라진 부분을 중심으로 적어 주세요."
+  },
+  { id:"R4",
+    phase:"application",
+    q:"앞으로 실습에서 환자확인을 할 때 구체적으로 무엇을 다르게 하겠습니까?",
+    note:"막연한 다짐이 아닌 실제로 하게 될 행동이나 말을 적어 주세요."
+  }
+];
+
+/* ================================================================== */
+
+const state = { sid:"", startedAt:new Date() };
+const $ = s => document.querySelector(s);
+
+document.title             = CONFIG.PROGRAM_NAME;
+$("#progName").textContent = CONFIG.PROGRAM_NAME;
+$("#barName").textContent  = CONFIG.PROGRAM_NAME;
+
+const CODE_RANGE = CONFIG.CODE_PREFIX + pad(CONFIG.CODE_MIN)
+                 + " ~ " + CONFIG.CODE_PREFIX + pad(CONFIG.CODE_MAX);
+
+/* ---------- 시뮬레이션에서 넘어온 코드 받기 ---------- */
+(function receiveCode(){
+  const p = new URLSearchParams(location.search).get("sid");
+  const code = p ? normalizeCode(p) : null;
+  if(code){
+    $("#sidInput").value = code;
+    $("#sidInput").disabled = true;
+    $("#codeHint").textContent =
+      "시뮬레이션에서 확인된 코드입니다. 본인 코드가 맞는지 확인하고 시작하세요.";
+  }
+})();
+
+$("#startBtn").addEventListener("click", start);
+$("#sidInput").addEventListener("keydown", e => { if(e.key==="Enter") start(); });
+$("#sidInput").addEventListener("input", e => {
+  e.target.value = e.target.value.toUpperCase().replace(/\s/g,"");
+});
+
+function normalizeCode(raw){
+  let v = String(raw).trim().toUpperCase();
+  if(!v) return null;
+  if(/^\d+$/.test(v)) v = CONFIG.CODE_PREFIX + v;
+  const m = v.match(new RegExp("^" + CONFIG.CODE_PREFIX + "(\\d{1,3})$"));
+  if(!m) return null;
+  const n = parseInt(m[1],10);
+  if(n < CONFIG.CODE_MIN || n > CONFIG.CODE_MAX) return null;
+  return CONFIG.CODE_PREFIX + pad(n);
+}
+
+function start(){
+  const code = normalizeCode($("#sidInput").value);
+  if(!code){
+    $("#gateErr").textContent = `연구 담당자가 부여한 ${CODE_RANGE} 범위의 코드를 재입력하세요.`;
+    $("#sidInput").focus();
+    return;
+  }
+  state.sid = code;
+  $("#gate").style.display = "none";
+  $("#form").style.display = "block";
+  $("#topbar").hidden = false;
+  $("#sidTag").textContent = code;
+  buildForm();
+  loadDraft();
+  window.scrollTo({top:0});
+}
+
+/* ---------- 작성 화면 ---------- */
+function buildForm(){
+  $("#formInner").innerHTML = `
+    <div class="intro">
+      시뮬레이션에서 <strong>무엇을 했고, 왜 그렇게 판단했는지</strong>를 스스로 되짚는 과정입니다.
+      잘한 점과 부족했던 점을 함께 적을수록 도움이 됩니다.
+      ${CONFIG.MIN_CHARS ? `문항마다 ${CONFIG.MIN_CHARS}자 이상 작성해 주세요.` : ""}
+    </div>
+
+    ${ITEMS.map((it,i)=>`
+      <div class="item" id="item${i}">
+        <div class="qhead">
+          <span class="qnum">${i+1}</span>
+          <h2>${it.q}</h2>
+        </div>
+        <p class="qnote">${it.note}</p>
+        <textarea id="ta${i}" data-i="${i}"></textarea>
+        <div class="count" id="cnt${i}"></div>
+      </div>`).join("")}
+
+    <div id="submitRow">
+      <button class="btn" id="submitBtn" disabled>성찰일지 제출</button>
+      <span id="submitNote"></span>
+    </div>`;
+
+  ITEMS.forEach((_,i)=>{
+    const ta = $("#ta"+i);
+    ta.addEventListener("input", ()=>{ paintCount(i); checkAll(); queueSave(); });
+    paintCount(i);
+  });
+
+  $("#submitBtn").addEventListener("click", submit);
+  checkAll();
+}
+
+function paintCount(i){
+  const n  = $("#ta"+i).value.trim().length;
+  const el = $("#cnt"+i);
+  if(CONFIG.MIN_CHARS){
+    const met = n >= CONFIG.MIN_CHARS;
+    el.className = "count" + (met ? " met" : "");
+    el.textContent = met ? `${n}자` : `${n} / ${CONFIG.MIN_CHARS}자`;
+    $("#item"+i).classList.toggle("filled", met);
+  }else{
+    el.textContent = `${n}자`;
+    $("#item"+i).classList.toggle("filled", n > 0);
+  }
+}
+
+function checkAll(){
+  const need = CONFIG.MIN_CHARS || 1;
+  const left = ITEMS.filter((_,i)=> $("#ta"+i).value.trim().length < need).length;
+  $("#submitBtn").disabled = left > 0;
+  $("#submitNote").textContent = left > 0
+    ? `${left}문항 전체 작성 완료 후 제출할 수 있습니다.`
+    : "제출하면 수정할 수 없습니다.";
+}
+
+/* ---------- 임시 저장 ---------- */
+let saveTimer = null;
+function queueSave(){
+  if(!CONFIG.AUTOSAVE) return;
+  $("#saveTag").textContent = "작성 중…";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 800);
+}
+function draftKey(){ return "reflection_" + state.sid; }
+
+function saveDraft(){
+  try{
+    const d = {};
+    ITEMS.forEach((it,i)=> d[it.id] = $("#ta"+i).value );
+    localStorage.setItem(draftKey(), JSON.stringify(d));
+    $("#saveTag").textContent = "임시 저장됨";
+  }catch(e){
+    $("#saveTag").textContent = "";
+  }
+}
+function loadDraft(){
+  if(!CONFIG.AUTOSAVE) return;
+  try{
+    const raw = localStorage.getItem(draftKey());
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    ITEMS.forEach((it,i)=>{
+      if(d[it.id]){ $("#ta"+i).value = d[it.id]; paintCount(i); }
+    });
+    checkAll();
+    $("#saveTag").textContent = "이전 내용 불러옴";
+  }catch(e){}
+}
+function clearDraft(){
+  try{ localStorage.removeItem(draftKey()); }catch(e){}
+}
+
+/* 작성 중 이탈 경고 */
+window.addEventListener("beforeunload", e => {
+  if($("#form").style.display !== "block") return;
+  const written = ITEMS.some((_,i)=> $("#ta"+i).value.trim().length > 0);
+  if(written){ e.preventDefault(); e.returnValue = ""; }
+});
+
+/* ---------- 제출 ---------- */
+function submit(){
+  $("#submitBtn").disabled = true;
+  $("#submitNote").textContent = "제출하는 중입니다…";
+
+  const answers = {};
+  ITEMS.forEach((it,i)=> answers[it.id] = $("#ta"+i).value.trim() );
+
+  $("#form").style.display = "none";
+  $("#topbar").hidden = true;
+  $("#done").classList.add("show");
+  window.scrollTo({top:0});
+
+  if(!CONFIG.ENDPOINT){
+    $("#sendState").textContent = "전송 주소가 없어 기록을 보내지 않았습니다.";
+    return;
+  }
+
+  const body = new URLSearchParams();
+  body.append("type","reflection");
+  body.append("studentId", state.sid);
+  body.append("startedAt", fmt(state.startedAt));
+  body.append("finishedAt", fmt(new Date()));
+  ITEMS.forEach(it => body.append(it.id, answers[it.id]) );
+
+  fetch(CONFIG.ENDPOINT, {
+    method:"POST", mode:"no-cors",
+    headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+    body:body.toString()
+  })
+  .then(()=>{
+    clearDraft();
+    $("#sendState").textContent = "기록을 저장했습니다.";
+  })
+  .catch(()=>{
+    $("#sendState").textContent = "저장에 실패했습니다. 담당자에게 알려주세요.";
+  });
+}
+
+/* ---------- 도구 ---------- */
+function pad(n){
+  return String(n).padStart(String(CONFIG.CODE_MAX).length, "0");
+}
+function fmt(d){
+  const p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} `
+       + `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+</script>
+</body>
+</html>
